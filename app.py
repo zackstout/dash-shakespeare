@@ -2,15 +2,29 @@
 import pandas as pd
 from textblob import TextBlob
 import dash
+import re
 from dash.dependencies import Input, Output, State, Event
 import dash_core_components as dcc
 import dash_html_components as html
 from collections import defaultdict
-from flask import Flask
+# from flask import Flask
 import os
+# Not sure whether we need this, with textblob...
+import nltk # Interesting, if you run this with python instead of python3, it can't find nltk.
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk import FreqDist
+import nltk.text
+from nltk.corpus import wordnet as wn
 
 df = None
+stop_words = [
+'the', 'thee', 'am', 'are', 'o', 'hath', 'have', 'of', 'than', 'my', 'thy', 'upon', 'or', 'and', 'if', 'when',
+'is', "'t", 'nay', 'come', 'from', 'do', ']', '[', 'thou', 'let', 'them', 'for', 'him', 'her', 'they', 'i', 'be', 'since',
+'will', 'this', 'i', 'a', 'though', 'so', 'again', 'like', 'in', 'been', 'was', '?', ',', '.', 'go', 'by', 'there',
+'here', 'as', 'how', 'would', 'ay', 'ah', 'alas', 'nor', 'sir', 'madam'
+]
 
+# Split this up please:
 def prepare_play():
     global df
     df = pd.read_csv('Hamlet.csv')
@@ -33,6 +47,10 @@ def prepare_play():
     sentences = hamlet_blob.sentences # Hmmm, but we'd like to attach the speaker to each one...
     hamlet_list = [] # Will contain objects that have a sentence text and a speaker.
 
+
+    doNLTK(hamlet)
+
+
     # Populate list of sentences with speakers attached:
     for s in sentences: # Since we're now going through all lines, takes a bit longer
         if (len(df[df['char_count'] == s.start].values) > 0):
@@ -47,7 +65,44 @@ def prepare_play():
 
 hamlet_list = prepare_play()
 
+
 # print(df.head(30))
+
+
+#############################################################################################################
+
+# So for a network chart...we would want size of each node to represent frequency of word.
+# And breadth of each edge to represent strength of collocation -- can nltk offer that?
+def doNLTK(play):
+    # Initialize NLTK object:
+    toks = word_tokenize(play)
+    full_text = nltk.Text(toks)
+    context = nltk.text.ContextIndex(toks) # Yes, this has similar_words, this is what we need!
+
+    allwords = []
+    # print(full_text.concordance('madness')) # No need to print. Returns None, like similar().
+    # print(full_text.similar('death'))
+    fdist = FreqDist(full_text)
+    # commons = fdist.most_common(250)
+    commons = [f for f in fdist.keys() if fdist[f] > 8] # Can also check it's not a stop word here
+    commons_str = '  '.join(commons)
+    commons_toks = word_tokenize(commons_str)
+    commons_tags = nltk.pos_tag(commons_toks)
+    # Hideous -- figure out regex:
+    commons_imp = [(c[0]) for c in commons_tags if (c[1] == 'NN') or (c[1] == 'NNP') or ('VB' in c[1]) or ('JJ' in c[1])]
+    commons_imp_nostop = [c for c in commons_imp if c.lower() not in stop_words]
+    # print(commons_imp_nostop)
+
+    for w in commons_imp_nostop:
+        # x = full_text.ContextIndex.similar_words(w) # What? Why does this return None but just print?
+        x = context.similar_words(w)
+        # print(x)
+        for idx, x in enumerate(context.similar_words(w)):
+            if x.lower() not in stop_words and x not in allwords:
+                allwords.append(x.lower())
+                print('{} is similar to {} by degree {}'.format(w, x.lower(), idx))
+
+    # print(allwords)
 
 #############################################################################################################
 
@@ -71,7 +126,7 @@ app.layout = html.Div([
         "color": "tomato",
         "text-align": "center",
         "font-family": "Georgia"
-        })
+    })
 ])
 
 #############################################################################################################
@@ -198,7 +253,6 @@ def getSpeakerSentiment(speaker):
     for s in hamlet_list:
         if s['speaker']:
             if s['speaker'] == speaker:
-                # print(s['text'], s['speaker'])
                 total += s['text'].sentiment.polarity
             res.append(total)
     return res
