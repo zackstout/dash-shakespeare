@@ -6,7 +6,7 @@ from dash.dependencies import Input, Output, State, Event
 import dash_core_components as dcc
 import dash_html_components as html
 from collections import defaultdict
-
+from flask import Flask
 import os
 
 df = None
@@ -55,7 +55,8 @@ active_speakers = [] # Which speakers are on the chart
 
 # Could set up an input field for typing speaker name, get line chart of sentiment for them?
 app = dash.Dash(__name__)
-server = app.server # Adding for deployment
+# server = app.server # Adding for deployment
+server = Flask(__name__)
 
 app.layout = html.Div([
     html.H2('Sentiment by Speaker in Hamlet'),
