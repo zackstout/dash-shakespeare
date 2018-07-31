@@ -53,6 +53,7 @@ active_speakers = [] # Which speakers are on the chart
 
 # Could set up an input field for typing speaker name, get line chart of sentiment for them?
 app = dash.Dash(__name__)
+server = app.server # Adding for deployment
 
 app.layout = html.Div([
     html.H2('Sentiment by Speaker in Hamlet'),
@@ -63,11 +64,16 @@ app.layout = html.Div([
     html.Button('Add to chart', id='btn'),
     html.Div(id='graph-out'),
     dcc.Input(id='word-in', value='madness', type='text'),
-    html.Div(id='word-out')
+    html.Div(id='word-out', style={
+        "color": "tomato",
+        "text-align": "center",
+        "font-family": "Georgia"
+        })
 ])
 
+#############################################################################################################
 
-
+# Update word info:
 @app.callback(
     Output('word-out', 'children'),
     [Input('word-in', 'value')]
@@ -77,7 +83,7 @@ def update(word):
     total = 0
     total_sent = 0
     total_sent_mag = 0
-    speakers_count = defaultdict(int)
+    speakers_count = defaultdict(int) # Nice, much cleaner
 
     for s in hamlet_list:
         if word in s['text']:
@@ -89,17 +95,20 @@ def update(word):
     x = []
     for spk in speakers_count:
         x.append(html.P('{}: {}'.format(spk, speakers_count[spk])))
+
+    # NOTE: Must ensure we're not dividing by zero!!!
     return(
         html.Div([
             html.P('Total: {}'.format(total)),
             html.P('Mean sentiment: {}'.format(total_sent / total)),
             html.P('Mean sentiment magnitude: {}'.format(total_sent_mag / total)),
-            *x
-            # html.P('First speaker: {}'.format(speakers_count))
+            *x # Nice, python's way of spreading.
         ])
     )
 
+#############################################################################################################
 
+# Update the chart:
 @app.callback(
     Output('graph-out','children'),
     [Input('btn', 'n_clicks')], # Must be passing this so we don't have to say state=, events=.
@@ -190,7 +199,7 @@ def getSpeakerSentiment(speaker):
     return res
 
 
-
+#############################################################################################################
 
 ## Hmm I'm very confused why we're getting this KeyError for live-graph.figure....from previous app....
 # That is really strange.... only restarting the computer worked.... must be a caching issue..
