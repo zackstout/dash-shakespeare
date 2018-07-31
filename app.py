@@ -7,6 +7,8 @@ import dash_core_components as dcc
 import dash_html_components as html
 from collections import defaultdict
 
+import os
+
 df = None
 
 def prepare_play():
