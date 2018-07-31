@@ -4,3 +4,5 @@
 
 
 Note: Awesome for datasets: `req=urllib2.Request("https://raw.githubusercontent.com/plotly/datasets/master/miserables.json")`
+
+Use pip freeze > requirements.txt to generate this.
