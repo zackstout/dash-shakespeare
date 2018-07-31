@@ -5,6 +5,7 @@ import dash
 from dash.dependencies import Input, Output, State, Event
 import dash_core_components as dcc
 import dash_html_components as html
+from collections import defaultdict
 
 df = None
 
@@ -51,20 +52,55 @@ hamlet_list = prepare_play()
 active_speakers = [] # Which speakers are on the chart
 
 # Could set up an input field for typing speaker name, get line chart of sentiment for them?
-app2 = dash.Dash(__name__)
+app = dash.Dash(__name__)
 
-app2.layout = html.Div([
+app.layout = html.Div([
     html.H2('Sentiment by Speaker in Hamlet'),
     html.Div(children='''
         Speaker:
     '''),
     dcc.Input(id='speaker-in', value='HAMLET', type='text'),
     html.Button('Add to chart', id='btn'),
-    html.Div(id='graph-out')
+    html.Div(id='graph-out'),
+    dcc.Input(id='word-in', value='madness', type='text'),
+    html.Div(id='word-out')
 ])
 
 
-@app2.callback(
+
+@app.callback(
+    Output('word-out', 'children'),
+    [Input('word-in', 'value')]
+)
+# I wonder how costly it'll be to call this every keystroke -- apparently not very!:
+def update(word):
+    total = 0
+    total_sent = 0
+    total_sent_mag = 0
+    speakers_count = defaultdict(int)
+
+    for s in hamlet_list:
+        if word in s['text']:
+            total += 1
+            total_sent += s['text'].sentiment.polarity
+            total_sent_mag += abs(s['text'].sentiment.polarity)
+            speakers_count[s['speaker']] += 1
+
+    x = []
+    for spk in speakers_count:
+        x.append(html.P('{}: {}'.format(spk, speakers_count[spk])))
+    return(
+        html.Div([
+            html.P('Total: {}'.format(total)),
+            html.P('Mean sentiment: {}'.format(total_sent / total)),
+            html.P('Mean sentiment magnitude: {}'.format(total_sent_mag / total)),
+            *x
+            # html.P('First speaker: {}'.format(speakers_count))
+        ])
+    )
+
+
+@app.callback(
     Output('graph-out','children'),
     [Input('btn', 'n_clicks')], # Must be passing this so we don't have to say state=, events=.
     # Input('speaker-in', 'value')], # Ok this works, but we don't want it to trigger every time the speaker-in value changes...
@@ -106,7 +142,7 @@ def on_click(clicks, input_value):
 #   - Yeah the whole problem is that it *doesn't* know its previous number of clicks.
 
 
-# @app2.callback(
+# @app.callback(
 #     Output('graph-out', 'children'), # Output is the 'children' property of component that has id='output-graph'
 #     [Input('speaker-in', 'value')] # Input is the 'value' property of component that has id='input'
 # )
@@ -160,6 +196,6 @@ def getSpeakerSentiment(speaker):
 # That is really strange.... only restarting the computer worked.... must be a caching issue..
 
 if __name__ == '__main__':
-    app2.run_server(debug=True)
+    app.run_server(debug=True)
 
 # to be or not to be
